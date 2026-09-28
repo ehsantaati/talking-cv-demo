@@ -1,62 +1,132 @@
 # Talking CV
 
-An interactive AI-powered CV that lets recruiters explore my professional background through a conversational interface.
+An interactive AI-powered CV that lets recruiters explore my professional background through a conversational chat interface.
 
-Talking CV combines a Laravel frontend with a FastAPI AI backend. The backend uses retrieval-augmented generation (RAG) so responses are grounded in a professional knowledge base covering my experience, technical skills, education, research, projects, and publications.
+The application uses Laravel for the frontend and FastAPI as the AI backend. A LangGraph agent dynamically selects the appropriate tools based on each question, including retrieval from my professional knowledge base and external tools exposed through the Model Context Protocol (MCP).
 
-Conversation history is preserved during the session, allowing recruiters to ask natural follow-up questions and explore different parts of my background interactively.
 
-## Live demo
 
-🔗 **https://cv.ehsantaati.com**
-
-Example questions:
-
-- What is Ehsan's experience with AI?
-- What are Ehsan's main technical skills?
-- Tell me about Ehsan's recent projects.
-- What experience does Ehsan have with speech AI?
-- What research has Ehsan worked on?
+Conversation history is preserved during the session, allowing recruiters to ask context-dependent follow-up questions naturally.
 
 ## High-level architecture
 
 ```mermaid
 flowchart TD
     U[Recruiter]
-    D[cv.ehsantaati.com]
+    L[Laravel Chat UI]
+    F[FastAPI Backend]
+    A[LangGraph Agent]
+    LLM[Azure OpenAI LLM]
 
-    L[Laravel Frontend<br/>Azure Container App]
-    F[FastAPI Backend<br/>Private Azure Container App]
-
-    RAG[RAG Service]
+    CV[CV Search Tool]
     KB[(Professional Knowledge Base)]
-    AI[Azure OpenAI]
 
-    U --> D
-    D --> L
+    MCP[GitHub MCP]
+    GH[GitHub]
 
+    U -->|Question| L
     L -->|Question + Conversation History| F
+    F --> A
 
-    F --> RAG
-    RAG <--> KB
-    RAG -->|Retrieved Context| F
+    A <--> LLM
 
-    F --> AI
-    AI -->|Generated Answer| F
+    A -->|CV / professional question| CV
+    CV <--> KB
+    CV -->|Retrieved Context| A
 
-    F --> L
-    L -->|Answer| U
+    A -->|Repository question| MCP
+    MCP <--> GH
+    MCP -->|Tool Result| A
+
+    A -->|Final Answer + Agent Activity| F
+    F -->|Streaming Response| L
+    L --> U
 ```
 
-## Roadmap
+## Version roadmap
 
-### V2.0 — Voice Interaction 🚧
+### V1.0 — Conversational RAG Chat ✅
 
-Planned next steps:
+Stable chat-based Talking CV with:
 
-- Microphone input
+- Laravel chat interface
+- FastAPI AI backend
+- RAG-based retrieval from the professional knowledge base
+- LLM-generated grounded responses
+- Multi-turn conversation history
+- Context-dependent follow-up questions
+- Suggested starter questions
+- New conversation / conversation reset
+- Input validation
+- Graceful FastAPI failure handling
+- Laravel and FastAPI automated tests
+- Docker-based deployment
+- Azure Container Apps deployment
+- GitHub Actions CI/CD
+
+### V2.0 — Agentic Talking CV ✅
+
+Extending the conversational system with agentic capabilities:
+
+- LangGraph-based agent orchestration
+- LLM-driven dynamic tool selection
+- Professional knowledge-base retrieval exposed as an agent tool
+- GitHub integration through MCP
+- Multi-tool execution and answer synthesis
+- Real-time agent activity streaming through FastAPI and Laravel
+- Recruiter-visible tool activity such as CV search and GitHub retrieval
+
+### V3.0 — Voice Interaction 🚧
+
+The next stage will extend the agentic conversational pipeline with voice support:
+
+- Microphone input in the Laravel interface
 - Speech-to-text (STT)
 - Voice questions with conversation history
+- Agentic tool selection through the existing LangGraph pipeline
 - Text-to-speech (TTS)
 - Synchronized text and audio responses
-- Graceful fallback to text when voice services are unavailable
+- Graceful fallback to text
+
+```text
+Recruiter
+   │
+   │ Speech
+   ▼
+Laravel UI
+   │
+   ▼
+FastAPI
+   │
+   ├──► STT
+   │       │
+   │       ▼
+   │   Transcribed Question
+   │
+   ▼
+LangGraph Agent
+   │
+   ├──► CV / RAG Tool
+   │
+   ├──► MCP Tools
+   │
+   └──► LLM
+           │
+           ▼
+      Final Response
+           │
+           ▼
+          TTS
+           │
+           ▼
+      Audio Response
+           │
+           ▼
+      Laravel UI
+       │       │
+       ▼       ▼
+      Text    Audio
+           │
+           ▼
+       Recruiter
+```
