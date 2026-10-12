@@ -1,5 +1,7 @@
 # Talking CV
 
+[cv.ehsantaati.com](https://cv.ehsantaati.com)
+---
 An interactive AI-powered CV that lets recruiters explore my professional background through a conversational chat interface.
 
 The application uses Laravel for the frontend and FastAPI as the AI backend. A LangGraph agent dynamically selects the appropriate tools based on each question, including retrieval from my professional knowledge base and external tools exposed through the Model Context Protocol (MCP).
@@ -43,6 +45,23 @@ flowchart TD
     L --> U
 ```
 
+## Prompt hardening and GitHub access boundaries
+
+The system prompt guides the agent to explain access limits and retrieval failures. Python wrappers enforce README-only file reads while allowing repository discovery through read-only GitHub MCP tools.
+
+```mermaid
+flowchart TD
+    P[System prompt: explain access limits] -.-> A[LangGraph agent]
+    A --> S[Search repository names and metadata]
+    A --> R[Wrapper fixes file path to README.md]
+    S --> M[Read-only GitHub MCP]
+    R --> M
+    M --> A
+    A --> O[Answer or explain limitation]
+```
+
+Implementation: [GitHub wrappers](backend/src/backend/mcp_tools/github.py) and [agent prompt](backend/src/backend/agent_service.py).
+
 ## Version roadmap
 
 ### V1.0 — Conversational RAG Chat ✅
@@ -72,6 +91,7 @@ Extending the conversational system with agentic capabilities:
 - LLM-driven dynamic tool selection
 - Professional knowledge-base retrieval exposed as an agent tool
 - GitHub integration through MCP
+- README-only GitHub file access enforced through wrapper tools, with repository discovery and explicit access-limit guidance
 - Multi-tool execution and answer synthesis
 - Real-time agent activity streaming through FastAPI and Laravel
 - Recruiter-visible tool activity such as CV search and GitHub retrieval
