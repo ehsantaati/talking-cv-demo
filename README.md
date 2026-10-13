@@ -45,22 +45,38 @@ flowchart TD
     L --> U
 ```
 
-## Prompt hardening and GitHub access boundaries
+## RAG guardrails and GitHub access boundaries
 
-The system prompt guides the agent to explain access limits and retrieval failures. Python wrappers enforce README-only file reads while allowing repository discovery through read-only GitHub MCP tools.
+Talking CV applies guardrails in five layers:
+
+1. **System prompt:** defines the professional scope, allowed sources, and response rules.
+2. **Before retrieval:** checks question scope, redirects unrelated or restricted requests, and removes unrelated parts of mixed requests.
+3. **After CV retrieval:** checks whether the returned evidence supports the question before generating an answer.
+4. **After generation:** checks the draft's factual claims against current tool evidence before showing the response to the user.
+5. **Tool access control:** MCP is configured for read-only repository search and file retrieval; the agent sees only wrappers, with file reads fixed to the root `README.md`.
+
+LangGraph enforces this flow and returns fixed fallback messages when checks fail. Scope and evidence judgments use the LLM, so they can make mistakes. Mixed requests receive a short explanation when an unrelated part is excluded.
 
 ```mermaid
 flowchart TD
-    P[System prompt: explain access limits] -.-> A[LangGraph agent]
-    A --> S[Search repository names and metadata]
-    A --> R[Wrapper fixes file path to README.md]
-    S --> M[Read-only GitHub MCP]
-    R --> M
-    M --> A
-    A --> O[Answer or explain limitation]
+    Q[Question] --> C[2. Scope check]
+    C -->|CV question| R[CV retrieval]
+    R --> E[3. Retrieved evidence check]
+    E -->|Supported| A[Generate answer]
+    E -->|Insufficient or check failed| F[Fixed fallback]
+    C -->|Unrelated or restricted| F[Fixed fallback]
+    C -->|GitHub question| G[Agent retrieves repository metadata or README]
+    G --> T[5. Read-only MCP and README-only wrapper]
+    T --> A
+    P[1. System prompt] -.-> A
+    A --> V[4. Draft answer check]
+    V -->|Supported| O[Answer]
+    V -->|Unsupported or check failed| F
 ```
 
-Implementation: [GitHub wrappers](backend/src/backend/mcp_tools/github.py) and [agent prompt](backend/src/backend/agent_service.py).
+GitHub access uses read-only MCP tools for repository discovery and root `README.md` retrieval. Python wrappers fix the file path, keeping other file contents inaccessible to the agent.
+
+Implementation: [GitHub wrappers](backend/src/backend/mcp_tools/github.py) and [agent prompt and LangGraph checks](backend/src/backend/agent_service.py).
 
 ## Version roadmap
 
@@ -150,3 +166,4 @@ LangGraph Agent
            ▼
        Recruiter
 ```
+
