@@ -1,6 +1,5 @@
 # Talking CV
 
-[cv.ehsantaati.com](https://cv.ehsantaati.com)
 ---
 An interactive AI-powered CV that lets recruiters explore my professional background through a conversational chat interface.
 
