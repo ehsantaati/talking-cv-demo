@@ -17,7 +17,7 @@ Interactive API documentation is available at `http://localhost:8081/docs`. For 
 
 ## Environment variables
 
-Create an untracked `backend/.env`. Settings are defined by the backend configuration module. Supply all required fields, even when using only one answer provider:
+Create an untracked `backend/.env`. Settings are defined in [config.py](src/backend/config.py). Supply all required fields, even when using only one answer provider:
 
 ```env
 AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
@@ -53,7 +53,7 @@ Optional metrics settings are `AZURE_STORAGE_CONNECTION_STRING` or `AZURE_TABLE_
 | `POST /asks/stream/` | Stream newline-delimited JSON events |
 | `GET /metrics/summary` | Authenticated request metrics |
 
-Question requests include `question`, optional `history`, and optional `thread_id`. The backend validates these fields before handling the request.
+Question requests include `question`, optional `history`, and optional `thread_id`. See the [request schemas](src/backend/models.py) and [API handlers](src/backend/main.py).
 
 ## Detailed architecture
 
@@ -109,7 +109,7 @@ This diagram shows the application request flow, model gateway, source tools, an
 
 ## Agent behaviour
 
-The LangGraph agent orchestrates scope checks, CV retrieval, GitHub tools, answer generation, and validation. [Intent routing](../docs/model-routing.md) chooses the answer provider; classification and evidence checks use Azure as primary with OpenAI fallback.
+The [graph](src/backend/agent/graph.py) orchestrates scope checks, CV retrieval, GitHub tools, answer generation, and validation. [Intent routing](../docs/model-routing.md) chooses the answer provider; classification and evidence checks use Azure as primary with OpenAI fallback.
 
 Conversation recall uses only history supplied by the frontend. It does not search Qdrant or GitHub, and it is not persistent memory across sessions. CV and GitHub follow-ups receive that history as context, but professional factual claims still require current tool evidence.
 
@@ -123,7 +123,7 @@ From `backend/`, with the environment configured:
 LANGSMITH_TRACING=false uv run pytest
 ```
 
-Disabling tracing avoids external LangSmith uploads during tests. Targeted suites cover guardrails, gateway failover, structured checks, and tracing metadata. Mocked provider tests do not establish live Azure/OpenAI availability.
+Disabling tracing avoids external LangSmith uploads during tests. Targeted suites include [guardrails](tests/test_agent_guards.py), [gateway failover](tests/test_llm_gateway.py), and [structured checks and tracing metadata](tests/test_structured_checks.py). Mocked provider tests do not establish live Azure/OpenAI availability.
 
 ### Semantic CV answer cache
 
@@ -175,3 +175,11 @@ paraphrases and near misses before production enablement. Numeric changes use
 separate buckets. Tests simulate Qdrant and embeddings without external writes.
 Before rollout, use a dedicated test collection to smoke-test actual embedding
 similarities, latency, repeat/paraphrase hits, changed-fact misses and outages.
+
+### Retrieved evidence for offline evaluation
+
+`POST /asks/stream/` accepts `include_evidence: true` for evaluation clients. This requires `X-Metrics-Key` matching a non-empty `FASTAPI_METRICS_KEY` in the backend environment, using the existing metrics authentication. Without the flag, ordinary chat streams retain their existing event contract and do not export raw tool evidence.
+
+The opt-in NDJSON `evidence` event, emitted immediately before the final `answer`, contains `context` (a list of `{tool, content}` records) and `outcome`. Context matches the answer validator's successful, non-empty current-turn tool messages; prior-turn evidence and failed tool messages are excluded. Tool content is evidence data, not instructions. The outcome distinguishes fixed policy refusals and insufficient-evidence fallbacks; other answers are labelled `answer`, not independently judged successful.
+
+Restart the backend after updating code (rebuild its image for Docker). The evaluation notebook loads the matching key from `backend/.env`, requests evidence and enables groundedness. Refusals/abstentions receive no groundedness score; factual answers with explicitly empty evidence score 1. Missing evidence events are configuration/instrumentation errors. This change does not export tool arguments or application costs.

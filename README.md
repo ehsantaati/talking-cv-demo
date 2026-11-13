@@ -49,6 +49,16 @@ The LangSmith dashboard compares costs and response times by model and provider 
 
 See [dashboard configuration](docs/observability.md#cost-and-performance-dashboard) and [request trace correlation](docs/observability.md#matching-records-for-one-question).
 
+## Evaluation
+
+The [evaluation notebook](backend/notebooks/evaluation.ipynb) documents a 49-example benchmark covering CV facts, research, GitHub projects and policy boundaries. It compares answer correctness, groundedness, routing accuracy and response latency through LangSmith. The [dataset and scoring notes](backend/evaluation/README.md) describe the reference answers and expected behaviour labels.
+
+![Talking CV evaluation results](assets/eval.png)
+
+*Example evaluation results. Correctness and groundedness use a 1–10 scale; routing accuracy is the proportion of correct routes. Higher is better for these scores. Latency is measured in seconds; lower is better. P50 is the median, and P99 is the time within which 99% of requests complete; tail estimates from a 10-question sample should be interpreted cautiously.*
+
+This demo repository contains documentation, evaluation assets and notebook code. Running the notebook requires a separately running Talking CV backend and local credentials; application source code and environment files are not included.
+
 ## Run locally
 
 Configure the [backend environment](backend/README.md#environment-variables) and [frontend environment](frontend/README.md#local-setup), then run:
